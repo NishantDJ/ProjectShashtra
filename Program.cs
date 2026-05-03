@@ -1,7 +1,9 @@
-using ProjectShashtra.Data;
-using System.Data.SqlTypes;
-using System.Data.SqlClient;
+﻿using ProjectShashtra.Data;
 using Microsoft.Data.SqlClient;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using ProjectShashtra.Services; // make sure this exists
 
 namespace ProjectShashtra
 {
@@ -11,23 +13,49 @@ namespace ProjectShashtra
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            // JWT Configuration
+            var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+            var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
+
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = jwtSettings["Issuer"],
+                    ValidAudience = jwtSettings["Audience"], // ✅ FIXED TYPO
+                    IssuerSigningKey = new SymmetricSecurityKey(key)
+                };
+            });
+
+            // Database Connection Test
             var connectionString = builder.Configuration.GetConnectionString("DBCS");
             using (SqlConnection con = new SqlConnection(connectionString))
             {
                 con.Open();
                 Console.WriteLine("Database Connected Successfully");
             }
-                // Add services to the container.
 
-                builder.Services.AddControllers();
+            // Add services to DI container
+            builder.Services.AddControllers();
+
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+            builder.Services.AddScoped<AuthService>(); // ✅ ADDED
+
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-            
+
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            // Middleware pipeline
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
@@ -36,9 +64,9 @@ namespace ProjectShashtra
 
             app.UseHttpsRedirection();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
-            
             app.MapControllers();
 
             app.Run();
