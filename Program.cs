@@ -53,6 +53,15 @@ namespace ProjectShashtra
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowReact", policy =>
+                {
+                    policy.WithOrigins("http://localhost:5173") // Vite default port
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
             var app = builder.Build();
 
             // Middleware pipeline
@@ -63,7 +72,10 @@ namespace ProjectShashtra
             }
 
             app.UseHttpsRedirection();
+            
 
+            // ── in pipeline ──
+            app.UseCors("AllowReact");
             app.UseAuthentication();
             app.UseAuthorization();
 

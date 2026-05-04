@@ -59,7 +59,8 @@ namespace ProjectShashtra.Controllers
                 token = token,
                 refreshToken=refreshToken,
                 fullName = user.Fullname,
-                username = user.Username
+                username = user.Username,
+                role=user.Role
 
             });
         }
